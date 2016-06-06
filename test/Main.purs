@@ -414,8 +414,20 @@ javaStyleTest = do
         "hello {- comment\n -} foo"
         (mkPos 7)
 
+fatalErrorTest :: TestM
+fatalErrorTest = do
+  parseErrorTestPosition
+    (choice [
+      fatal "this is fatal"
+    , pure "..."
+    ])
+    ""
+    (mkPos 1)
+
 main :: forall eff . Eff (console :: CONSOLE, assert :: ASSERT |eff) Unit
 main = do
+
+  fatalErrorTest
 
   parseErrorTestPosition
     (many $ char 'f' *> char '?')
