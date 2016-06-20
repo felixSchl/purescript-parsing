@@ -16,13 +16,14 @@ import Text.Parsing.Parser.Pos (Position, initialPos)
 data ParseError = ParseError
   { message :: String
   , position :: Position
+  , fatal :: Boolean
   }
 
 instance showParseError :: Show ParseError where
-  show (ParseError msg) = "ParseError { message: " <> msg.message <> ", position: " <> show msg.position <> " }"
+  show (ParseError msg) = "ParseError { message: " <> msg.message <> ", position: " <> show msg.position <> ", fatal: " <> show msg.fatal <> " }"
 
 instance eqParseError :: Eq ParseError where
-  eq (ParseError {message : m1, position : p1}) (ParseError {message : m2, position : p2}) = m1 == m2 && p1 == p2
+  eq (ParseError {message : m1, position : p1, fatal: f1}) (ParseError {message : m2, position : p2, fatal: f2}) = m1 == m2 && p1 == p2 && f1 == f2
 
 -- | `PState` contains the remaining input and current position.
 data PState s = PState
@@ -66,6 +67,7 @@ instance applicativeParserT :: Monad m => Applicative (ParserT s m) where
 instance altParserT :: Monad m => Alt (ParserT s m) where
   alt p1 p2 = ParserT $ \s -> unParserT p1 s >>= \o ->
     case o.result of
+      Left (ParseError { fatal: true }) -> pure o
       Left _ | not o.consumed -> unParserT p2 s
       _ -> pure o
 
@@ -104,12 +106,33 @@ consume :: forall s m. Monad m => ParserT s m Unit
 consume = ParserT $ \(PState { input: s, position: pos }) -> pure { consumed: true, input: s, result: Right unit, position: pos }
 
 -- | Fail with a message.
-fail :: forall m s a. Monad m => String -> ParserT s m a
-fail message = ParserT $ \(PState { input: s, position: pos }) -> pure $ parseFailed s pos message
+fail :: forall m s a. (Monad m) => String -> ParserT s m a
+fail message = ParserT $ \(PState { input: s, position: pos }) ->
+                  pure $ parseFailed s pos message
+
+-- | Fail fatally with a message.
+fatal :: forall m s a. (Monad m) => String -> ParserT s m a
+fatal message = ParserT $ \(PState { input: s, position: pos }) ->
+                  pure $ parseFailedFatal s pos message
 
 -- | Creates a failed parser state for the remaining input `s` and current position
 -- | with an error message.
 -- |
 -- | Most of the time, `fail` should be used instead.
 parseFailed :: forall s a. s -> Position -> String -> { input :: s, result :: Either ParseError a, consumed :: Boolean, position :: Position }
-parseFailed s pos message = { input: s, consumed: false, result: Left (ParseError { message: message, position: pos }), position: pos }
+parseFailed = parseFailed' false
+
+parseFailedFatal :: forall s a. s -> Position -> String -> { input :: s, result :: Either ParseError a, consumed :: Boolean, position :: Position }
+parseFailedFatal = parseFailed' true
+
+parseFailed' :: forall s a. Boolean -> s -> Position -> String -> { input :: s, result :: Either ParseError a, consumed :: Boolean, position :: Position }
+parseFailed' isFatal s pos message
+  = { input: s
+    , consumed: false
+    , result: Left (ParseError {
+        message:  message
+      , position: pos
+      , fatal:    isFatal
+      })
+    , position: pos
+    }
