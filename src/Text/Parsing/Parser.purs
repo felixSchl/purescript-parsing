@@ -13,17 +13,17 @@ import Data.Tuple (Tuple(..))
 import Text.Parsing.Parser.Pos (Position, initialPos)
 
 -- | A parsing error, consisting of a message and position information.
-data ParseError = ParseError
-  { message :: String
-  , position :: Position
-  , fatal :: Boolean
-  }
+data ParseError = ParseError String Position Boolean
+  -- { message :: String
+  -- , position :: Position
+  -- , fatal :: Boolean
+  -- }
 
 instance showParseError :: Show ParseError where
-  show (ParseError msg) = "ParseError { message: " <> msg.message <> ", position: " <> show msg.position <> ", fatal: " <> show msg.fatal <> " }"
+  show (ParseError msg pos fatal) = "ParseError { message: " <> msg <> ", position: " <> show pos <> ", fatal: " <> show fatal <> " }"
 
 instance eqParseError :: Eq ParseError where
-  eq (ParseError {message : m1, position : p1, fatal: f1}) (ParseError {message : m2, position : p2, fatal: f2}) = m1 == m2 && p1 == p2 && f1 == f2
+  eq (ParseError m1  p1 f1) (ParseError m2 p2 f2) = m1 == m2 && p1 == p2 && f1 == f2
 
 -- | `PState` contains the remaining input and current position.
 data PState s = PState
@@ -67,7 +67,7 @@ instance applicativeParserT :: Monad m => Applicative (ParserT s m) where
 instance altParserT :: Monad m => Alt (ParserT s m) where
   alt p1 p2 = ParserT $ \s -> unParserT p1 s >>= \o ->
     case o.result of
-      Left (ParseError { fatal: true }) -> pure o
+      Left (ParseError _ _ true) -> pure o
       Left _ | not o.consumed -> unParserT p2 s
       _ -> pure o
 
@@ -129,10 +129,6 @@ parseFailed' :: forall s a. Boolean -> s -> Position -> String -> { input :: s, 
 parseFailed' isFatal s pos message
   = { input: s
     , consumed: false
-    , result: Left (ParseError {
-        message:  message
-      , position: pos
-      , fatal:    isFatal
-      })
+    , result: Left (ParseError message pos isFatal)
     , position: pos
     }
