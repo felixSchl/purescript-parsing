@@ -14,13 +14,9 @@ import Text.Parsing.Parser.Pos (Position, initialPos)
 
 -- | A parsing error, consisting of a message and position information.
 data ParseError = ParseError String Position Boolean
-  -- { message :: String
-  -- , position :: Position
-  -- , fatal :: Boolean
-  -- }
 
 instance showParseError :: Show ParseError where
-  show (ParseError msg pos fatal) = "ParseError { message: " <> msg <> ", position: " <> show pos <> ", fatal: " <> show fatal <> " }"
+  show (ParseError msg pos fatal') = "ParseError " <> msg <> " " <> show pos <> " " <> show fatal'
 
 instance eqParseError :: Eq ParseError where
   eq (ParseError m1  p1 f1) (ParseError m2 p2 f2) = m1 == m2 && p1 == p2 && f1 == f2
