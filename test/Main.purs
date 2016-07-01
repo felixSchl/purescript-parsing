@@ -92,7 +92,7 @@ mkPos :: Int -> Position
 mkPos n = mkPos' n 1
 
 mkPos' :: Int -> Int -> Position
-mkPos' column line = Position { column: column, line: line }
+mkPos' column line = Position line column
 
 type TestM = forall eff . Eff (console :: CONSOLE, assert :: ASSERT | eff) Unit
 
@@ -415,7 +415,7 @@ main = do
   parseErrorTestPosition
     (many $ char 'f' *> char '?')
     "foo"
-    (Position { column: 3, line: 1 })
+    (Position 1 3)
 
   parseTest
     "foo"
@@ -446,10 +446,10 @@ main = do
   parseTest (fromFoldable [B]) B (match tokpos B)
   parseTest (fromFoldable [A, B]) A (match tokpos A)
 
-  parseErrorTestPosition (string "abc") "bcd" (Position { column: 1, line: 1 })
-  parseErrorTestPosition (string "abc" *> eof) "abcdefg" (Position { column: 4, line: 1 })
-  parseErrorTestPosition (string "a\nb\nc\n" *> eof) "a\nb\nc\nd\n" (Position { column: 1, line: 4 })
-  parseErrorTestPosition (string "\ta" *> eof) "\tab" (Position { column: 10, line: 1 })
+  parseErrorTestPosition (string "abc") "bcd" (Position 1 1)
+  parseErrorTestPosition (string "abc" *> eof) "abcdefg" (Position 1 4)
+  parseErrorTestPosition (string "a\nb\nc\n" *> eof) "a\nb\nc\nd\n" (Position 4 1)
+  parseErrorTestPosition (string "\ta" *> eof) "\tab" (Position 1 10)
 
   tokenParserIdentifierTest
   tokenParserReservedTest

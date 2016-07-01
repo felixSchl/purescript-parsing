@@ -175,7 +175,7 @@ skipMany1 p = do
 -- | Parse a phrase, without modifying the consumed state or stream position.
 lookAhead :: forall s a m. Monad m => ParserT s m a -> ParserT s m a
 lookAhead (ParserT p) = ParserT \(PState s pos) -> do
-  (Result s res _ pos) <- p (PState s pos)
+  (Result _ res _ _) <- p (PState s pos)
   pure (Result s res false pos)
 
 -- | Fail if the specified parser matches.
