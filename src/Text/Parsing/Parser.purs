@@ -9,6 +9,8 @@ module Text.Parsing.Parser
   , runParserT
   , consume
   , fail
+  , fatal
+  , error
   ) where
 
 import Prelude
@@ -26,17 +28,23 @@ import Data.Tuple (Tuple(..))
 import Text.Parsing.Parser.Pos (Position, initialPos)
 
 -- | A parsing error, consisting of a message and position information.
-data ParseError = ParseError String Position
+data ParseError = ParseError String Position Boolean
+
+error :: String -> Position -> Boolean -> ParseError
+error = ParseError
 
 parseErrorMessage :: ParseError -> String
-parseErrorMessage (ParseError msg _) = msg
+parseErrorMessage (ParseError msg _ _) = msg
 
 parseErrorPosition :: ParseError -> Position
-parseErrorPosition (ParseError _ pos) = pos
+parseErrorPosition (ParseError _ pos _) = pos
+
+isFatalError :: ParseError -> Boolean
+isFatalError (ParseError _ _ b) = b
 
 instance showParseError :: Show ParseError where
-  show (ParseError msg pos) =
-    "(ParseError " <> show msg <> show pos <> ")"
+  show (ParseError msg pos b) =
+    "(ParseError " <> show msg <> " " <> show pos <> " " <> show b <>")"
 
 derive instance eqParseError :: Eq ParseError
 derive instance ordParseError :: Ord ParseError
@@ -81,7 +89,7 @@ instance altParserT :: Monad m => Alt (ParserT s m) where
     Tuple e s'@(ParseState i' p' c') <- runStateT (runExceptT (unwrap p1)) (ParseState i p false)
     case e of
       Left err
-        | not c' -> runStateT (runExceptT (unwrap p2)) s
+        | not c' && not (isFatalError err) -> runStateT (runExceptT (unwrap p2)) s
       _ -> pure (Tuple e s')
 
 instance plusParserT :: Monad m => Plus (ParserT s m) where
@@ -105,4 +113,10 @@ consume = modify \(ParseState input position _) ->
 fail :: forall m s a. Monad m => String -> ParserT s m a
 fail message = do
   position <- gets \(ParseState _ pos _) -> pos
-  throwError (ParseError message position)
+  throwError (ParseError message position false)
+
+-- | Fatal with a message.
+fatal :: forall m s a. Monad m => String -> ParserT s m a
+fatal message = do
+  position <- gets \(ParseState _ pos _) -> pos
+  throwError (ParseError message position true)
